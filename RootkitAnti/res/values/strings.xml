@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">com.rootkit.anti</string>
+    <string name="action_settings">Settings</string>
+    <string name="enableMod">开启Rootkit检测</string>
+    <string name="disableMod">关闭Rootkit检测</string>
+    
+</resources>
