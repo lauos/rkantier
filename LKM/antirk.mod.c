@@ -17,7 +17,7 @@ __attribute__((section(".gnu.linkonce.this_module"))) = {
 static const struct modversion_info ____versions[]
 __used
 __attribute__((section("__versions"))) = {
-	{ 0xa9745698, "module_layout" },
+	{ 0xdfe21d50, "module_layout" },
 	{ 0xe914e41e, "strcpy" },
 	{ 0x2e5810c6, "__aeabi_unwind_cpp_pr1" },
 	{ 0xe2d5255a, "strcmp" },

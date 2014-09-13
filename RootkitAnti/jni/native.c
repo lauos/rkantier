@@ -105,7 +105,7 @@ jboolean enableMod(JNIEnv* env, jclass clazz, jobject object)
     EGIS_DEBUG("dataDir :%s", datadir);
 
     char rk_path[100];
-    sprintf(rk_path, "%s%s%s", datadir, "/","rootkit.ko");
+    sprintf(rk_path, "%s%s%s", datadir, "/","antirk.ko");
 
     char true_magic[512];
     unsigned long true_checksum;

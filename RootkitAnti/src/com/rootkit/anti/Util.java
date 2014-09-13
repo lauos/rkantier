@@ -70,7 +70,7 @@ public class Util {
 		
 		if(result.result == 0){
 			Log.d(tag, result.successMsg);
-			if(result.successMsg.contains("rootkit"))
+			if(result.successMsg.contains("antirk"))
 			{
 				return true;
 			}

@@ -1,0 +1,1 @@
+cmd_/home/gavin/git/rkantier/LKM/antirk.ko := /home/gavin/Android/Android-2.3.7/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-ld -r  -T /home/gavin/Android/kernel/goldfish/scripts/module-common.lds --build-id  -o /home/gavin/git/rkantier/LKM/antirk.ko /home/gavin/git/rkantier/LKM/antirk.o /home/gavin/git/rkantier/LKM/antirk.mod.o

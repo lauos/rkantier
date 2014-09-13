@@ -12,7 +12,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	private String tag = "ANTI-RK";
-	private String MOD = "rootkit.ko";
+	private String MOD = "antirk.ko";
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
