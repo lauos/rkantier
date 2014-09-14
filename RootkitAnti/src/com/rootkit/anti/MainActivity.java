@@ -4,6 +4,7 @@ import com.rootkit.anti.ShellUtils.CommandResult;
 
 import android.os.Bundle;
 import android.app.Activity;
+import android.content.Intent;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -39,6 +40,8 @@ public class MainActivity extends Activity {
 				
 				if(Util.checkStart()){
 					Toast.makeText(getApplicationContext(), "已经开启内核级Rootkit检测功能,进入设置界面", Toast.LENGTH_SHORT).show();
+					Intent intent = new Intent(getApplicationContext(), SettingActivity.class);
+					startActivity(intent);
 				}
 				else {
 					if(!ShellUtils.checkRootPermission())
@@ -46,11 +49,10 @@ public class MainActivity extends Activity {
 						Toast.makeText(getApplicationContext(), "未能获取Root权限，不能开启Rootkit检测功能", Toast.LENGTH_SHORT).show();
 					}else{
 						if(NativeFuncs.enableMod(getApplication().getApplicationInfo())){
-							Toast.makeText(getApplicationContext(), "正在开启内核级Rootkit检测功能", Toast.LENGTH_SHORT).show();
-						}
-						if(Util.checkStart())
-						{
 							Toast.makeText(getApplicationContext(), "已经开启内核级Rootkit检测功能,进入设置界面", Toast.LENGTH_SHORT).show();
+							
+							Intent intent = new Intent(getApplicationContext(), SettingActivity.class);
+							startActivity(intent);
 						}
 					}
 /*				
@@ -71,7 +73,7 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View arg0) {
 				
-				CommandResult result = ShellUtils.execCommand("rmmod " + "rootkit", true);
+				CommandResult result = ShellUtils.execCommand("rmmod " + "antirk", true);
 				
 				if(result.result == 0){
 					Log.d(tag, result.successMsg);

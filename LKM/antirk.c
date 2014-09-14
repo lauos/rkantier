@@ -24,7 +24,7 @@ MODULE_DESCRIPTION(DESCRIPTION);
 #define __NR_UNLINK 10
 #define __NR_DEL_MOD 129
 #define __NR_EXECVE 11
-#define __NR_MKDIR 39
+#define __NR_MKDIR 3
 #define __NR_RMDIR 40
 #define __NR_READ 3
 #define __NR_WRITE 4
@@ -40,8 +40,11 @@ static void **sys_call_table;
 static unsigned long sys_call_table_size;
 
 #define STRINGLEN 1024
-char global_buffer[STRINGLEN];
-struct proc_dir_entry *example_dir, *hello_file;
+char global_buffer_enable[10];
+char global_buffer_detect[STRINGLEN];
+char proc_buf[1024];
+
+struct proc_dir_entry *anti_rk, *enable, *detection;
 
 
 #define KERNEL_START_ADDRESS 0xc0008000
@@ -464,48 +467,181 @@ static int get_kallsyms_addresses()
 }
 
 
+static unsigned char syscall_table_flag[400];
+static unsigned long exception_table[20];
 
-static ssize_t check_buf(const char *buf)
+//Detect Exception Handle Fucntion
+static int detect_eht()
 {
-	return 1;
-}
+			return -1;
+	void *swi_addr = (long *)0xffff0008;
+	unsigned long offset = 0;
+	unsigned long *vector_swi_addr = 0;
+	int i;
+	int eht_len = 20;
 
+	offset = ((*(long *)swi_addr) & 0xfff) + 8;
+	vector_swi_addr = *(unsigned long **)(swi_addr + offset);
 
-asmlinkage ssize_t hacked_read (int fd, char *buf, size_t count)
-{
+	memcpy(exception_table, vector_swi_addr, 20 * 8);
 
-	if(check_buf(buf))
+	for(i = 0; i < eht_len; vector_swi_addr++, i++)
 	{
-		printk ("SYS_READ: %02x\n", *buf);
+		if(*(unsigned long *)vector_swi_addr != exception_table[i])
+		{
+			return -1;
+		}
 	}
-	return orig_read(fd, buf, count);
+
+	return 0;
 }
 
-asmlinkage ssize_t hacked_write (int fd, char *buf, size_t count)
-{
 
-   	if(check_buf(buf))
+//Detect Syscall Table 
+static int detect_sct()
+{
+			return -1;
+	int i;
+	int flag = 0;
+
+	printk("In detect_sct");
+	for(i = 0; i < sys_call_table_size; i++)
 	{
-   		printk ("SYS_WRITE: %02x\n", *buf);		
+		if((unsigned long)sys_call_table[i] == (unsigned long)sys_call_table[i])
+		{
+			syscall_table_flag[i] = 1;
+		}
+		else
+		{
+			syscall_table_flag[i] = 0;
+			flag = 1;
+		}
 	}
-    return orig_write(fd, buf, count);
+
+	if(flag == 1) 
+	{
+		return -1;
+	}
+	else
+	{ 
+		return 0;
+	}
 }
 
-asmlinkage ssize_t hacked_open(const char *pathname, int flags) 
+//Detect VFS
+static int detect_vfs()
 {
-	printk("SYS_OPEN: %s\n", pathname);
-	return orig_open(pathname, flags);
+	return -1;
 }
 
-int proc_read_hello(char *page, char **start, off_t off, int count, int *eof, void *data) 
+//Detect hidden module
+static int detect_mod()
+{
+	return -1;
+}
+
+// static ssize_t check_buf(const char *buf)
+// {
+// 	return 1;
+// }
+
+
+// asmlinkage ssize_t hacked_read (int fd, char *buf, size_t count)
+// {
+
+// 	if(check_buf(buf))
+// 	{
+// 		printk ("SYS_READ: %02x\n", *buf);
+// 	}
+// 	return orig_read(fd, buf, count);
+// }
+
+// asmlinkage ssize_t hacked_write (int fd, char *buf, size_t count)
+// {
+
+//    	if(check_buf(buf))
+// 	{
+//    		printk ("SYS_WRITE: %02x\n", *buf);		
+// 	}
+//     return orig_write(fd, buf, count);
+// }
+
+// asmlinkage ssize_t hacked_open(const char *pathname, int flags) 
+// {
+// 	printk("SYS_OPEN: %s\n", pathname);
+// 	return orig_open(pathname, flags);
+// }
+
+static void do_detect()
+{   
+	printk("In do_detect\n");
+
+    strcpy(proc_buf, "Result:{");
+
+    strcpy(proc_buf + strlen(proc_buf), "ExceptionTable=");
+
+    if(detect_eht() < 0)
+    {
+       strcpy(proc_buf + strlen(proc_buf), "1");
+    }
+    else
+    {
+       strcpy(proc_buf + strlen(proc_buf), "0");
+    }
+
+    strcpy(proc_buf + strlen(proc_buf), ",SyscallTable=");
+
+    if(detect_sct() < 0)
+    {
+       strcpy(proc_buf + strlen(proc_buf), "1");
+    }
+    else
+    {
+       strcpy(proc_buf + strlen(proc_buf), "0");
+    }
+
+    strcpy(proc_buf + strlen(proc_buf), ",VFS=");
+    if(detect_vfs() < 0)
+    {
+       strcpy(proc_buf + strlen(proc_buf), "1");
+    }
+    else
+    {
+       strcpy(proc_buf + strlen(proc_buf), "0");
+    }
+    strcpy(proc_buf + strlen(proc_buf), ",HiddenModule=");
+    if(detect_mod() < 0)
+    {
+       strcpy(proc_buf + strlen(proc_buf), "1");
+    }
+    else
+    {
+       strcpy(proc_buf + strlen(proc_buf), "0");
+    }
+
+    strcpy(proc_buf + strlen(proc_buf), "}");
+
+    memcpy(global_buffer_detect, proc_buf, strlen(proc_buf) + 1);
+
+    printk("%s\n", global_buffer_detect);
+}
+
+int proc_read_enable(char *page, char **start, off_t off, int count, int *eof, void *data) 
+{
+        return sprintf(page, global_buffer_enable); //把global_buffer的内容显示给访问者
+}
+
+int proc_read_mod(char *page, char **start, off_t off, int count, int *eof, void *data) 
 {
         int len;
-        len = sprintf(page, global_buffer); //把global_buffer的内容显示给访问者
+        len = sprintf(page, global_buffer_detect); //把global_buffer的内容显示给访问者
         return len;
 }
-int proc_write_hello(struct file *file, const char *buffer, unsigned long count, void *data)
+
+int proc_write_mod(struct file *file, const char *buffer, unsigned long count, void *data)
 {
         int len;
+
         if (count = STRINGLEN)
         	len = STRINGLEN - 1;
         else
@@ -514,11 +650,28 @@ int proc_write_hello(struct file *file, const char *buffer, unsigned long count,
          * copy_from_user函数将数据从用户空间拷贝到内核空间
          * 此处将用户写入的数据存入global_buffer
          */
-        copy_from_user(global_buffer, buffer, len);
-        global_buffer[len] = '\0';
-        printk("global_buffer : %s\n", global_buffer);
-        return len;
+
+        printk("Count : %lu\n", len);
+        copy_from_user(proc_buf, buffer, len);
+        proc_buf[strlen(proc_buf)] = '\0';
+
+        printk("proc_buf : %s\n", proc_buf);
+
+		if(strstr(proc_buf, "Detect:") == proc_buf)
+		{
+			do_detect();
+		}
+		else
+		{
+			memset(global_buffer_detect, 0, STRINGLEN);
+		}
+
+		printk("reult len : %d\n", strlen(global_buffer_detect));
+
+        return strlen(global_buffer_detect);
 }
+
+
 
 static int init_rk(void)
 {
@@ -543,11 +696,15 @@ static int init_rk(void)
 	// sys_call_table[__NR_WRITE] = hacked_write;
 	// sys_call_table[__NR_OPEN] = hacked_open;
 
-	example_dir = (*proc_mkdir_addr)("anti-rk", NULL);
-   	hello_file = (*create_proc_entry_addr)("enable", S_IRUGO, example_dir);
-    strcpy(global_buffer, "1");
-    hello_file->read_proc = proc_read_hello;
-    hello_file->write_proc = proc_write_hello;
+	anti_rk = (*proc_mkdir_addr)("anti-rk", NULL);
+   	enable = (*create_proc_entry_addr)("enable", 0444, anti_rk);
+	detection = (*create_proc_entry_addr)("detection", 0666, anti_rk);
+
+    strcpy(global_buffer_enable, "1");
+    enable->read_proc = proc_read_enable;
+
+    detection->read_proc = proc_read_mod;
+    detection->write_proc = proc_write_mod;
 
 
 	return 0;
@@ -556,7 +713,8 @@ static int init_rk(void)
 static void exit_rk(void)
 {
 	printk("Bye, Rootkit\n");
-	(*remove_proc_entry_addr)("enable", example_dir);
+	(*remove_proc_entry_addr)("enable", anti_rk);
+	(*remove_proc_entry_addr)("detection", anti_rk);
 	(*remove_proc_entry_addr)("anti-rk", NULL);
 }
 

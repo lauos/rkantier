@@ -18,10 +18,13 @@ static const struct modversion_info ____versions[]
 __used
 __attribute__((section("__versions"))) = {
 	{ 0xdfe21d50, "module_layout" },
-	{ 0xe914e41e, "strcpy" },
 	{ 0x2e5810c6, "__aeabi_unwind_cpp_pr1" },
 	{ 0xe2d5255a, "strcmp" },
 	{ 0x91715312, "sprintf" },
+	{ 0x9d669763, "memcpy" },
+	{ 0xe914e41e, "strcpy" },
+	{ 0x1e6d26a8, "strstr" },
+	{ 0x97255bdf, "strlen" },
 	{ 0xfa2a45e, "__memzero" },
 	{ 0xfbc74f64, "__copy_from_user" },
 	{ 0x27e1a049, "printk" },

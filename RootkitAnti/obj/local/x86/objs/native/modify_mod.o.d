@@ -1,5 +1,5 @@
-/home/gavin/workspace/RootkitAnti/obj/local/x86/objs/native/modify_mod.o: \
- /home/gavin/workspace/RootkitAnti/jni/modify_mod.c \
+/home/gavin/git/rkantier/RootkitAnti/obj/local/x86/objs/native/modify_mod.o: \
+ /home/gavin/git/rkantier/RootkitAnti/jni/modify_mod.c \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/stdio.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/sys/cdefs.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/sys/cdefs_elf.h \
@@ -27,7 +27,7 @@
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/elf.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/sys/exec_elf.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/machine/exec.h \
- /home/gavin/workspace/RootkitAnti/jni/debug.h \
+ /home/gavin/git/rkantier/RootkitAnti/jni/debug.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/android/log.h
 
 /opt/android/ndk/platforms/android-9/arch-x86/usr/include/stdio.h:
@@ -84,6 +84,6 @@
 
 /opt/android/ndk/platforms/android-9/arch-x86/usr/include/machine/exec.h:
 
-/home/gavin/workspace/RootkitAnti/jni/debug.h:
+/home/gavin/git/rkantier/RootkitAnti/jni/debug.h:
 
 /opt/android/ndk/platforms/android-9/arch-x86/usr/include/android/log.h:

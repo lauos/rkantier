@@ -1,5 +1,5 @@
-/home/gavin/workspace/RootkitAnti/obj/local/x86/objs/native/native.o: \
- /home/gavin/workspace/RootkitAnti/jni/native.c \
+/home/gavin/git/rkantier/RootkitAnti/obj/local/x86/objs/native/native.o: \
+ /home/gavin/git/rkantier/RootkitAnti/jni/native.c \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/stdio.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/sys/cdefs.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/sys/cdefs_elf.h \
@@ -63,11 +63,16 @@
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/endian.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/sys/endian.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/machine/endian.h \
- /home/gavin/workspace/RootkitAnti/jni/debug.h \
+ /opt/android/ndk/platforms/android-9/arch-x86/usr/include/errno.h \
+ /opt/android/ndk/platforms/android-9/arch-x86/usr/include/linux/errno.h \
+ /opt/android/ndk/platforms/android-9/arch-x86/usr/include/asm/errno.h \
+ /opt/android/ndk/platforms/android-9/arch-x86/usr/include/asm-generic/errno.h \
+ /opt/android/ndk/platforms/android-9/arch-x86/usr/include/asm-generic/errno-base.h \
+ /home/gavin/git/rkantier/RootkitAnti/jni/debug.h \
  /opt/android/ndk/platforms/android-9/arch-x86/usr/include/android/log.h \
- /home/gavin/workspace/RootkitAnti/jni/refinvoke.h \
- /home/gavin/workspace/RootkitAnti/jni/modify_mod.h \
- /home/gavin/workspace/RootkitAnti/jni/reslove_mod.h
+ /home/gavin/git/rkantier/RootkitAnti/jni/refinvoke.h \
+ /home/gavin/git/rkantier/RootkitAnti/jni/modify_mod.h \
+ /home/gavin/git/rkantier/RootkitAnti/jni/reslove_mod.h
 
 /opt/android/ndk/platforms/android-9/arch-x86/usr/include/stdio.h:
 
@@ -195,12 +200,22 @@
 
 /opt/android/ndk/platforms/android-9/arch-x86/usr/include/machine/endian.h:
 
-/home/gavin/workspace/RootkitAnti/jni/debug.h:
+/opt/android/ndk/platforms/android-9/arch-x86/usr/include/errno.h:
+
+/opt/android/ndk/platforms/android-9/arch-x86/usr/include/linux/errno.h:
+
+/opt/android/ndk/platforms/android-9/arch-x86/usr/include/asm/errno.h:
+
+/opt/android/ndk/platforms/android-9/arch-x86/usr/include/asm-generic/errno.h:
+
+/opt/android/ndk/platforms/android-9/arch-x86/usr/include/asm-generic/errno-base.h:
+
+/home/gavin/git/rkantier/RootkitAnti/jni/debug.h:
 
 /opt/android/ndk/platforms/android-9/arch-x86/usr/include/android/log.h:
 
-/home/gavin/workspace/RootkitAnti/jni/refinvoke.h:
+/home/gavin/git/rkantier/RootkitAnti/jni/refinvoke.h:
 
-/home/gavin/workspace/RootkitAnti/jni/modify_mod.h:
+/home/gavin/git/rkantier/RootkitAnti/jni/modify_mod.h:
 
-/home/gavin/workspace/RootkitAnti/jni/reslove_mod.h:
+/home/gavin/git/rkantier/RootkitAnti/jni/reslove_mod.h:

@@ -9,6 +9,8 @@
 #include <dirent.h>            // 提供目录流操作函数
 #include <string.h>
 #include <sys/stat.h>        // 提供属性操作函数
+#include <errno.h>
+
 
 #include "debug.h"
 #include "refinvoke.h"
@@ -16,6 +18,7 @@
 #include "reslove_mod.h"
 
 #define NELEM(x) ((int)(sizeof(x) / sizeof((x)[0])))
+
 
 int is_module(char *name)
 {
@@ -46,6 +49,54 @@ int is_module(char *name)
 			return 0;
 		}
 	}
+	return 0;
+}
+
+int read_proc_info(char* dir, char* buf)
+{
+	int fp;
+	char path[256];
+
+	sprintf(path, "%s/%s", "/proc/anti-rk", dir);
+	EGIS_DEBUG("%s to read", path);
+
+	fp = open(path, O_RDONLY);
+	if(fp == -1)
+	{
+		EGIS_ERROR("open %s failed!", path);
+		return -1;
+	}
+
+	if(read(fp, buf, 1024) == -1)
+	{
+		EGIS_ERROR("read %s failed! : %s", path);
+		close(fp);
+		return -1;
+	}
+	close(fp);
+	return 0;
+}
+
+int write_proc_info(char* dir, char* buf)
+{
+	int fp;
+	char path[256];
+	sprintf(path, "%s/%s", "/proc/anti-rk", dir);
+	EGIS_DEBUG("%s to write", path);
+
+	fp = open(path, O_RDWR);
+	if(fp == -1)
+	{
+		EGIS_ERROR("open %s failed!", path);
+		return -1;
+	}
+
+	if(write(fp, buf, strlen(buf)) == -1)
+	{
+		close(fp);
+		return -1;
+	}
+	close(fp);
 	return 0;
 }
 
@@ -114,6 +165,7 @@ jboolean enableMod(JNIEnv* env, jclass clazz, jobject object)
 
     EGIS_DEBUG("true_magic : %s", true_magic);
     EGIS_DEBUG("true_checksum : %08x", true_checksum);
+    EGIS_DEBUG("rk_path : %s", rk_path);
 
     load_and_modify(rk_path, true_magic, true_checksum);
 
@@ -149,6 +201,49 @@ jboolean enableMod(JNIEnv* env, jclass clazz, jobject object)
 		 }
 	}
 
+	char result[1024];
+	if(read_proc_info("enable", result) < 0)
+	{
+		return 0;
+	}
+	return 1;
+}
+
+jstring startDetection(JNIEnv* env, jclass clazz, jstring config)
+{
+	EGIS_DEBUG("In start");
+
+	char buf[1024];
+	char* config_str = (char *)(*env)->GetStringUTFChars(env, config, 0);
+
+	sprintf(buf, "%s%s", "Detect:", config_str);
+	EGIS_DEBUG("Config : %s", buf);
+
+	if(write_proc_info("detection", buf) < 0)
+	{
+		EGIS_ERROR("Write config error");
+		return 0;
+	}
+
+	do
+	{
+		if(read_proc_info("detection", buf) < 0)
+		{
+			EGIS_ERROR("Read result error: %s", buf);
+			return 0;
+		}
+		if(strstr(buf, "Result:") != NULL)
+		{
+			EGIS_DEBUG("Got Result");
+			break;
+		}
+	}while(1);
+
+	return (*env)->NewGlobalRef(env, (*env)->NewStringUTF(env, buf));
+}
+jboolean resetSystem(JNIEnv* env, jclass clazz)
+{
+	EGIS_DEBUG("In resetSystem");
 	return 1;
 }
 
@@ -162,6 +257,8 @@ static JNINativeMethod gMethods[] =
 {
     {"enableMod", "(Landroid/content/pm/ApplicationInfo;)Z", (void *)enableMod},
     {"disableMod", "()Z", (void *)disableMod},
+    {"startDetection", "(Ljava/lang/String;)Ljava/lang/String;", (void*)startDetection},
+    {"resetSystem", "()Z", (void*)resetSystem}
 };
 
 /*

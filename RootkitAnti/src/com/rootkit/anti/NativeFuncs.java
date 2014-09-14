@@ -12,7 +12,9 @@ public class NativeFuncs {
 	
 	static native boolean disableMod();
 	
-	static native boolean startDetection(String args);
+	static native String startDetection(String config);
+	
+	static native boolean resetSystem();
 	
 	static{
 		System.loadLibrary("native");
